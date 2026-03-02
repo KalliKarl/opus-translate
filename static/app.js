@@ -165,8 +165,15 @@ document.querySelectorAll(".dev-btn").forEach((btn) => {
                 method: "POST",
                 body: JSON.stringify({ device: dev }),
             });
-            if (res.ok) fetchHealth();
-        } catch { /* 401 handled in apiFetch */ }
+            if (res.ok) {
+                fetchHealth();
+            } else {
+                const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+                showToast(err.detail || "Cihaz değiştirilemedi", "error");
+            }
+        } catch (e) {
+            if (e.message !== "Unauthorized") showToast(e.message, "error");
+        }
     });
 });
 
@@ -191,8 +198,15 @@ async function modelAction(dir, action) {
         const method = action === "load" ? "POST" : "DELETE";
         const path   = action === "load" ? `/models/${dir}/load` : `/models/${dir}`;
         const res = await apiFetch(path, { method });
-        if (res.ok) fetchHealth();
-    } catch { /* 401 handled */ }
+        if (res.ok) {
+            fetchHealth();
+        } else {
+            const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+            showToast(err.detail || "İşlem başarısız", "error");
+        }
+    } catch (e) {
+        if (e.message !== "Unauthorized") showToast(e.message, "error");
+    }
 }
 
 function syncModelCards(loadedModels) {
@@ -253,6 +267,19 @@ async function fetchHealth() {
         el("status").textContent = "Çevrimdışı";
         el("status").className = "status";
     }
+}
+
+// ── Toast bildirimi ────────────────────────────────────────────────────────
+function showToast(message, type = "info") {
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("toast-visible"));
+    setTimeout(() => {
+        toast.classList.remove("toast-visible");
+        toast.addEventListener("transitionend", () => toast.remove());
+    }, 3500);
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────

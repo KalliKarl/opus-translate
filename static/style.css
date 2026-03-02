@@ -299,6 +299,26 @@ textarea:focus { outline: none; }
 }
 .modal-error.hidden { display: none; }
 
+/* ── Toast ───────────────────────────────── */
+.toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    padding: 0.7rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #fff;
+    background: #333;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 200;
+    max-width: 320px;
+}
+.toast.toast-visible { opacity: 1; transform: translateY(0); }
+.toast.toast-error   { background: #c62828; }
+.toast.toast-info    { background: var(--accent); }
+
 /* ── Utility ─────────────────────────────── */
 .hidden { display: none !important; }
 
