@@ -1,10 +1,14 @@
-"""Opus Translate — Windows System Tray Launcher.
+"""Opus Translate — Cross-platform System Tray Launcher.
 
-launch-tray.vbs tarafından pythonw.exe ile başlatılır (konsol penceresi yok).
-Debug için log dosyasını PowerShell penceresiyle takip eder.
+Windows : launch-tray.vbs → pythonw.exe tray.py  (konsol yok)
+Linux   : start-tray.sh   → nohup python3 tray.py (arka plan)
+
+Sunucu zaten çalışıyorsa (systemd vb.) yeni başlatmaz, sadece ikon gösterir.
 """
 
 import logging
+import platform
+import socket
 import subprocess
 import sys
 import threading
@@ -40,12 +44,44 @@ def _make_icon():
     return img
 
 
-# ── Sunucu thread ──────────────────────────────────────────────────────────────
+# ── Sunucu kontrol / başlatma ──────────────────────────────────────────────────
+
+def _server_running(host: str, port: int) -> bool:
+    with socket.socket() as s:
+        s.settimeout(1)
+        return s.connect_ex((host, port)) == 0
+
 
 def _run_server() -> None:
     import uvicorn
     from config import settings
     uvicorn.run("server:app", host=settings.host, port=settings.port, reload=False)
+
+
+# ── Debug konsol ───────────────────────────────────────────────────────────────
+
+def _open_debug_linux(proc_ref: list) -> None:
+    """systemd varsa journalctl, yoksa log dosyasını tail et."""
+    # systemd servisi var mı?
+    has_systemd = subprocess.run(
+        ["systemctl", "is-active", "--quiet", "opus-translate"],
+        capture_output=True,
+    ).returncode == 0
+
+    if has_systemd:
+        tail_cmd = "journalctl -u opus-translate -f -n 80"
+    else:
+        tail_cmd = f"tail -n 80 -f '{LOG_FILE}'"
+
+    for term in ("gnome-terminal", "x-terminal-emulator", "xfce4-terminal", "konsole", "xterm"):
+        try:
+            if term == "gnome-terminal":
+                proc_ref[0] = subprocess.Popen([term, "--", "bash", "-c", tail_cmd])
+            else:
+                proc_ref[0] = subprocess.Popen([term, "-e", tail_cmd])
+            return
+        except FileNotFoundError:
+            continue
 
 
 # ── Ana giriş ──────────────────────────────────────────────────────────────────
@@ -57,12 +93,15 @@ def run() -> None:
         sys.exit("pystray kurulu değil: pip install pystray pillow")
 
     _setup_logging()
-    log.info("Opus Translate Tray başlatılıyor")
 
     from config import settings
 
-    # Sunucuyu daemon thread'de başlat
-    threading.Thread(target=_run_server, daemon=True).start()
+    # Sunucu zaten çalışıyorsa yeni başlatma
+    if _server_running("127.0.0.1", settings.port):
+        log.info("Sunucu zaten çalışıyor (port %s) — tray companion modu", settings.port)
+    else:
+        log.info("Sunucu başlatılıyor")
+        threading.Thread(target=_run_server, daemon=True).start()
 
     _debug_proc: list[subprocess.Popen | None] = [None]
 
@@ -75,7 +114,6 @@ def run() -> None:
             proc.terminate()
             _debug_proc[0] = None
             return
-        import platform
         if platform.system() == "Windows":
             _debug_proc[0] = subprocess.Popen(
                 [
@@ -86,17 +124,7 @@ def run() -> None:
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
             )
         else:
-            # Linux: mevcut terminal emülatörüyle aç
-            tail_cmd = f"tail -n 80 -f '{LOG_FILE}'"
-            for term in ("x-terminal-emulator", "gnome-terminal", "xfce4-terminal", "konsole", "xterm"):
-                try:
-                    if term == "gnome-terminal":
-                        _debug_proc[0] = subprocess.Popen([term, "--", "bash", "-c", tail_cmd])
-                    else:
-                        _debug_proc[0] = subprocess.Popen([term, "-e", tail_cmd])
-                    break
-                except FileNotFoundError:
-                    continue
+            _open_debug_linux(_debug_proc)
 
     def is_debug_open(item) -> bool:
         p = _debug_proc[0]
