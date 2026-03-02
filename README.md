@@ -55,19 +55,48 @@ pip install -r requirements.txt
 python server.py
 ```
 
-### GPU Kurulumu (Opsiyonel)
+### GPU Kurulumu
 
-GPU kullanmak için PyTorch'un CUDA sürümünü yükleyin:
+> **Önemli:** `pip install torch` komutu varsayılan olarak **CPU sürümünü** kurar.
+> PyTorch, CUDA destekli sürümlerini kendi sunucusunda tutar — `--index-url` belirtmek zorunludur.
+
+**1. NVIDIA sürücü versiyonunu öğrenin:**
 
 ```bash
-# CUDA 12.x
+nvidia-smi
+# Çıktıda "CUDA Version: X.X" satırına bakın
+```
+
+**2. Uygun PyTorch CUDA sürümünü kurun:**
+
+```bash
+# CUDA 12.6 (sürücü CUDA 12.x veya 13.x için)
+pip install torch --index-url https://download.pytorch.org/whl/cu126
+
+# CUDA 12.1
 pip install torch --index-url https://download.pytorch.org/whl/cu121
 
 # CUDA 11.8
 pip install torch --index-url https://download.pytorch.org/whl/cu118
 ```
 
-GPU yoksa veya CUDA kurulu değilse otomatik olarak CPU kullanılır.
+> **Not:** Sürücü CUDA versiyonu ≥ PyTorch CUDA versiyonu olmalıdır.
+> Örneğin CUDA 13.1 sürücüsü ile cu126 paketi çalışır (geriye dönük uyumlu).
+
+**3. GPU'nun görüldüğünü doğrulayın:**
+
+```bash
+python -c "import torch; print(torch.cuda.is_available(), torch.version.cuda)"
+# Çıktı: True 12.6
+```
+
+**4. `.env` dosyasında device'ı ayarlayın:**
+
+```bash
+TRANSLATE_DEVICE=cuda
+```
+
+GPU yoksa veya CUDA kurulu değilse `TRANSLATE_DEVICE=auto` bırakın — otomatik CPU'ya düşer.
 
 ## Kullanım
 
@@ -131,6 +160,18 @@ curl "http://localhost:5050/detect?text=Hello%20world"
 
 ## Ortam Değişkenleri
 
+Proje kökündeki `.env` dosyasından okunur (yoksa sistem ortam değişkenlerine bakılır):
+
+```bash
+# .env
+TRANSLATE_HOST=0.0.0.0
+TRANSLATE_PORT=5050
+TRANSLATE_DEVICE=cuda        # auto | cuda | cpu
+TRANSLATE_MAX_LENGTH=512
+TRANSLATE_BATCH_SIZE=32
+TRANSLATE_API_KEY=gizli-key  # boş bırakılırsa koruma yok
+```
+
 | Değişken | Varsayılan | Açıklama |
 |---|---|---|
 | `TRANSLATE_PORT` | `5050` | HTTP port |
@@ -138,24 +179,59 @@ curl "http://localhost:5050/detect?text=Hello%20world"
 | `TRANSLATE_DEVICE` | `auto` | `auto` / `cuda` / `cpu` |
 | `TRANSLATE_MAX_LENGTH` | `512` | Maksimum token sayısı |
 | `TRANSLATE_BATCH_SIZE` | `32` | Maksimum batch boyutu |
+| `TRANSLATE_API_KEY` | `""` | API key (boşsa herkese açık) |
+
+> `.env` dosyası `.gitignore`'da tanımlıdır — API key'i commit etme riski yok.
+
+## Web Dashboard
+
+`http://localhost:5050` adresinden erişilir.
+
+| Özellik | Açıklama |
+|---|---|
+| Çeviri paneli | Split-panel, Ctrl+Enter kısayolu |
+| GPU/CPU toggle | Header'da anlık cihaz değişimi |
+| Model kartları | TR→EN / EN→TR yükle / boşalt (VRAM yönetimi) |
+| Geçmiş | localStorage'da son 50 çeviri |
+| Sunucu durumu | Device, VRAM, uptime, toplam çeviri |
+| API Key modal | Sunucu key gerektiriyorsa otomatik açılır |
+
+## API Key
+
+Sunucu `.env`'deki `TRANSLATE_API_KEY` ile korunur. Dashboard'da ilk açılışta modal çıkar, girilen key `localStorage`'a kaydedilir.
+
+API çağrılarında header olarak gönderin:
+
+```bash
+curl -X POST http://localhost:5050/translate \
+  -H "Authorization: Bearer gizli-key" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Merhaba", "direction": "tr-en"}'
+```
+
+`TRANSLATE_API_KEY` boş bırakılırsa koruma devre dışı.
 
 ## Proje Yapısı
 
 ```
 opus-translate/
-├── server.py          → FastAPI sunucu, endpoint tanımları
-├── translator.py      → Çeviri motoru (model yükleme, inference)
-├── detector.py        → Dil algılama
-├── schemas.py         → Request/Response Pydantic modelleri
-├── config.py          → Konfigürasyon, ortam değişkenleri
+├── server.py               → FastAPI sunucu, endpoint tanımları
+├── translator.py           → Çeviri motoru (model yükleme, inference)
+├── detector.py             → Dil algılama
+├── schemas.py              → Request/Response Pydantic modelleri
+├── auth.py                 → API Key authentication
+├── config.py               → Konfigürasyon, .env yükleme
 ├── static/
-│   ├── index.html     → Web dashboard
-│   ├── style.css      → Dark theme stiller
-│   └── app.js         → Client-side JavaScript
-├── requirements.txt   → Python bağımlılıkları
-├── start.sh           → Linux başlatma scripti
-├── start.bat          → Windows başlatma scripti
-└── CLAUDE.md          → Geliştirici kılavuzu
+│   ├── index.html          → Web dashboard
+│   ├── style.css           → Dark theme stiller
+│   └── app.js              → Client-side JavaScript
+├── .env                    → Ortam değişkenleri (git'e eklenmez)
+├── requirements.txt        → Python bağımlılıkları
+├── start.sh                → Linux başlatma scripti
+├── start.bat               → Windows başlatma scripti
+├── deploy-fkmsi.sh         → fk-msi sunucu deploy scripti
+├── opus-translate.service  → systemd unit dosyası
+└── CLAUDE.md               → Geliştirici kılavuzu
 ```
 
 ## Modeller
