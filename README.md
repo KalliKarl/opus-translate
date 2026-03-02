@@ -11,49 +11,76 @@ Self-hosted, cross-platform Türkçe↔İngilizce çeviri servisi.
 - **REST API** — OpenAPI/Swagger dokümantasyonu dahil
 - **Batch çeviri** — Birden fazla metni tek istekte çevir
 - **Dil algılama** — Otomatik kaynak dil tespiti
+- **API Key koruması** — Bearer token, boş bırakılırsa herkese açık
+- **Runtime GPU/CPU toggle** — Dashboard'dan anlık cihaz değişimi
+- **Model yönetimi** — Dashboard'dan yükle / boşalt (VRAM kontrolü)
+- **System Tray** — Konsol penceresi olmadan arka planda çalışır (Windows + Linux)
 - **Cross-platform** — Windows ve Linux desteği
 
 ## Gereksinimler
 
 - **Python** 3.10+
-- **GPU (opsiyonel):** NVIDIA GPU + CUDA Toolkit (Windows'ta cuDNN dahil)
+- **GPU (opsiyonel):** NVIDIA GPU + CUDA Toolkit
 - **RAM:** Minimum 4GB (modeller ~800MB)
 - **Disk:** ~2GB (modeller + bağımlılıklar)
 
 ## Kurulum
 
-### Windows
+### Windows — Normal mod
 
 ```powershell
-git clone https://github.com/user/opus-translate.git
+git clone https://github.com/KalliKarl/opus-translate.git
 cd opus-translate
-
-# Otomatik (venv + bağımlılıklar + başlat)
 start.bat
-
-# Manuel
-python -m venv venv
-venv\Scripts\activate.bat
-pip install -r requirements.txt
-python server.py
 ```
 
-### Linux / macOS
+### Windows — System Tray modu
+
+```powershell
+start-tray.bat
+```
+
+Terminal penceresi açılmaz. Sistem tepsisinde **OT** ikonu belirir.
+Sağ tıkla: **Dashboard Aç** / **Debug Konsol** / **Çıkış**
+
+> İlk çalıştırmada `pystray` ve `Pillow` otomatik kurulur.
+
+### Linux / macOS — Normal mod
 
 ```bash
-git clone https://github.com/user/opus-translate.git
+git clone https://github.com/KalliKarl/opus-translate.git
 cd opus-translate
-
-# Otomatik
 chmod +x start.sh
 ./start.sh
+```
 
-# Manuel
+### Linux — System Tray modu
+
+```bash
+# GNOME bağımlılıkları (Ubuntu/Debian)
+sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 \
+                 libayatana-appindicator3-1 gir1.2-ayatanaappindicator3-0.1
+
+chmod +x start-tray.sh
+./start-tray.sh
+```
+
+Terminal kapanır, sistem tepsisinde **OT** ikonu belirir.
+**Sol tıkla** menüyü açın: **Dashboard Aç** / **Debug Konsol** / **Çıkış**
+
+> GNOME autostart: `~/.config/autostart/opus-translate-tray.desktop` olarak kaydedilir.
+> Debug Konsol: `journalctl -u opus-translate -f` (systemd) veya log dosyası.
+
+### Manuel (tüm platformlar)
+
+```bash
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate        # Windows: venv\Scripts\activate.bat
 pip install -r requirements.txt
 python server.py
 ```
+
+---
 
 ### GPU Kurulumu
 
@@ -85,7 +112,7 @@ nvidia-smi
 
 ```bash
 python -c "import torch; print(torch.cuda.is_available(), torch.version.cuda)"
-# Çıktı: True 12.6
+# Çıktı: True 12.8
 ```
 
 **4. `.env` dosyasında device'ı ayarlayın:**
@@ -95,6 +122,8 @@ TRANSLATE_DEVICE=cuda
 ```
 
 GPU yoksa veya CUDA kurulu değilse `TRANSLATE_DEVICE=auto` bırakın — otomatik CPU'ya düşer.
+
+---
 
 ## Kullanım
 
@@ -133,28 +162,13 @@ curl -X POST http://localhost:5050/translate/batch \
   -d '{"texts": ["Merhaba", "Günaydın", "İyi geceler"], "direction": "tr-en"}'
 ```
 
-```json
-{
-  "translations": ["Hello", "Good morning", "Good night"],
-  "direction": "tr-en",
-  "count": 3,
-  "duration_ms": 78.5
-}
-```
-
 **Dil algılama:**
 
 ```bash
 curl "http://localhost:5050/detect?text=Hello%20world"
 ```
 
-```json
-{
-  "language": "en",
-  "confidence": 0.8,
-  "suggested_direction": "en-tr"
-}
-```
+---
 
 ## Ortam Değişkenleri
 
@@ -181,6 +195,8 @@ TRANSLATE_API_KEY=gizli-key  # boş bırakılırsa koruma yok
 
 > `.env` dosyası `.gitignore`'da tanımlıdır — API key'i commit etme riski yok.
 
+---
+
 ## Web Dashboard
 
 `http://localhost:5050` adresinden erişilir.
@@ -189,7 +205,7 @@ TRANSLATE_API_KEY=gizli-key  # boş bırakılırsa koruma yok
 |---|---|
 | Çeviri paneli | Split-panel, Ctrl+Enter kısayolu |
 | GPU/CPU toggle | Header'da anlık cihaz değişimi |
-| Model kartları | TR→EN / EN→TR yükle / boşalt (VRAM yönetimi) |
+| Model kartları | TR→EN / EN→TR yükle / boşalt — yükleme sırasında progress badge |
 | Geçmiş | localStorage'da son 50 çeviri |
 | Sunucu durumu | Device, VRAM, uptime, toplam çeviri |
 | API Key modal | Sunucu key gerektiriyorsa otomatik açılır |
@@ -209,6 +225,8 @@ curl -X POST http://localhost:5050/translate \
 
 `TRANSLATE_API_KEY` boş bırakılırsa koruma devre dışı.
 
+---
+
 ## Proje Yapısı
 
 ```
@@ -219,14 +237,18 @@ opus-translate/
 ├── schemas.py              → Request/Response Pydantic modelleri
 ├── auth.py                 → API Key authentication
 ├── config.py               → Konfigürasyon, .env yükleme
+├── tray.py                 → Cross-platform system tray launcher
 ├── static/
 │   ├── index.html          → Web dashboard
 │   ├── style.css           → Dark theme stiller
 │   └── app.js              → Client-side JavaScript
 ├── .env                    → Ortam değişkenleri (git'e eklenmez)
 ├── requirements.txt        → Python bağımlılıkları
-├── start.sh                → Linux başlatma scripti
-├── start.bat               → Windows başlatma scripti
+├── start.sh                → Linux normal başlatma
+├── start.bat               → Windows normal başlatma
+├── start-tray.sh           → Linux system tray başlatma
+├── start-tray.bat          → Windows system tray başlatma
+├── launch-tray.vbs         → Windows: konsulsuz pythonw.exe launcher
 ├── deploy-fkmsi.sh         → fk-msi sunucu deploy scripti
 ├── opus-translate.service  → systemd unit dosyası
 └── CLAUDE.md               → Geliştirici kılavuzu
@@ -244,6 +266,8 @@ Modeller ilk çalıştırmada otomatik indirilir ve `~/.cache/huggingface` altı
 ## Notlar
 
 - İlk çeviri isteğinde model yüklenir (lazy loading) — başlangıç hızlıdır
+- Model yüklerken dashboard'da animasyonlu progress badge gösterilir
 - GPU yoksa CPU'ya otomatik düşer (daha yavaş ama çalışır)
 - Batch çeviri, tekli çeviriden ~5-10x daha hızlıdır (GPU paralelizasyonu)
 - RTX 1060 6GB: iki model ~800MB VRAM, ~5.2GB boş kalır
+- System tray companion modu: sunucu zaten çalışıyorsa (systemd vb.) yeni başlatmaz
