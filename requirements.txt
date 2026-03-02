@@ -3,3 +3,4 @@ transformers
 sentencepiece
 fastapi
 uvicorn[standard]
+python-dotenv

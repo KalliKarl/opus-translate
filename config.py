@@ -3,6 +3,11 @@
 import logging
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent / ".env")
 
 LOG_FORMAT = "[%(name)s] %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
