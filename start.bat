@@ -8,7 +8,7 @@ if not exist "venv" (
 
 call venv\Scripts\activate.bat
 echo [start] Bagimliliklar kontrol ediliyor...
-pip install -q -r requirements.txt
+pip install -q --disable-pip-version-check -r requirements.txt
 
 echo [start] Opus Translate baslatiliyor...
 python server.py

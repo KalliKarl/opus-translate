@@ -6,3 +6,4 @@ venv/
 dist/
 build/
 .cache/
+opus-translate.log

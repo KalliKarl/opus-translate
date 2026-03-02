@@ -1,5 +1,6 @@
 """Opus Translate — FastAPI sunucu."""
 
+import asyncio
 import logging
 import time
 from pathlib import Path
@@ -134,7 +135,8 @@ async def switch_device(req: DeviceSwitchRequest, _=Depends(require_api_key)):
 async def load_model(direction: str, _=Depends(require_api_key)):
     if direction not in settings.models:
         raise HTTPException(400, f"Geçersiz direction: {direction}")
-    engine._ensure_model(direction)
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, engine._ensure_model, direction)
     return ModelStatusResponse(direction=direction, loaded=True, message="Model yüklendi")
 
 

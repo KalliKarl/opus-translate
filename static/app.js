@@ -194,18 +194,38 @@ document.querySelectorAll(".btn-unload").forEach((btn) => {
 });
 
 async function modelAction(dir, action) {
+    const card      = el(`card-${dir}`);
+    const loadBtn   = card.querySelector(".btn-load");
+    const unloadBtn = card.querySelector(".btn-unload");
+    const badge     = el(`badge-${dir}`);
+
+    // Loading state
+    if (action === "load") {
+        loadBtn.disabled = true;
+        loadBtn.textContent = "Yükleniyor…";
+        badge.textContent = "Yükleniyor";
+        badge.className = "badge loading";
+    } else {
+        unloadBtn.disabled = true;
+        unloadBtn.textContent = "Boşaltılıyor…";
+    }
+
     try {
         const method = action === "load" ? "POST" : "DELETE";
         const path   = action === "load" ? `/models/${dir}/load` : `/models/${dir}`;
         const res = await apiFetch(path, { method });
-        if (res.ok) {
-            fetchHealth();
-        } else {
+        if (!res.ok) {
             const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
             showToast(err.detail || "İşlem başarısız", "error");
         }
     } catch (e) {
         if (e.message !== "Unauthorized") showToast(e.message, "error");
+    } finally {
+        loadBtn.disabled = false;
+        loadBtn.textContent = "Yükle";
+        unloadBtn.disabled = false;
+        unloadBtn.textContent = "Boşalt";
+        await fetchHealth();
     }
 }
 

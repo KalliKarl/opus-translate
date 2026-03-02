@@ -222,7 +222,15 @@ textarea:focus { outline: none; }
     background: var(--border);
     color: var(--text-dim);
 }
-.badge.loaded { background: var(--green-bg); color: #a5d6a7; }
+.badge.loaded   { background: var(--green-bg); color: #a5d6a7; }
+.badge.loading  { background: var(--accent); color: #fff; animation: badge-pulse 1.1s ease-in-out infinite; }
+
+@keyframes badge-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+.btn-small:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── History ─────────────────────────────── */
 .history-list { display: flex; flex-direction: column; gap: 0.5rem; }

@@ -4,3 +4,6 @@ sentencepiece
 fastapi
 uvicorn[standard]
 python-dotenv
+# Tray launcher (opsiyonel — start-tray.bat için)
+pystray
+Pillow
