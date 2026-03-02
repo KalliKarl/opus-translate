@@ -5,16 +5,20 @@ import time
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Query
+import torch
+from fastapi import FastAPI, Query, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from config import settings
+from auth import require_api_key
 from schemas import (
     TranslateRequest, TranslateResponse,
     BatchRequest, BatchResponse,
     DetectResponse, HealthResponse,
+    DeviceSwitchRequest, DeviceSwitchResponse,
+    ModelStatusResponse,
 )
 from translator import TranslatorEngine
 from detector import LanguageDetector
@@ -28,7 +32,7 @@ detector = LanguageDetector()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("Opus Translate başlatılıyor — %s:%s", settings.host, settings.port)
-    log.info("Device: %s", engine.device)
+    log.info("Device: %s  |  API key: %s", engine.device, "aktif" if settings.api_key else "yok")
     yield
     log.info("Kapatılıyor.")
 
@@ -61,7 +65,7 @@ async def root():
 
 
 @app.post("/translate", response_model=TranslateResponse)
-async def translate(req: TranslateRequest):
+async def translate(req: TranslateRequest, _=Depends(require_api_key)):
     t0 = time.perf_counter()
     result = engine.translate(req.text, req.direction)
     duration = (time.perf_counter() - t0) * 1000
@@ -74,7 +78,9 @@ async def translate(req: TranslateRequest):
 
 
 @app.post("/translate/batch", response_model=BatchResponse)
-async def translate_batch(req: BatchRequest):
+async def translate_batch(req: BatchRequest, _=Depends(require_api_key)):
+    if len(req.texts) > settings.batch_size:
+        raise HTTPException(400, f"texts max {settings.batch_size} öğe içerebilir")
     t0 = time.perf_counter()
     results = engine.translate_batch(req.texts, req.direction)
     duration = (time.perf_counter() - t0) * 1000
@@ -95,13 +101,49 @@ async def health():
         models_loaded=engine.loaded_models,
         uptime=int(time.time() - engine.start_time),
         total_translations=engine.total_translations,
+        cuda_available=torch.cuda.is_available(),
         **(gpu or {}),
     )
 
 
 @app.get("/detect", response_model=DetectResponse)
-async def detect(text: str = Query(..., min_length=1, max_length=5000)):
+async def detect(
+    text: str = Query(..., min_length=1, max_length=5000),
+    _=Depends(require_api_key),
+):
     return detector.detect(text)
+
+
+# --- Cihaz yönetimi ---
+
+
+@app.post("/config/device", response_model=DeviceSwitchResponse)
+async def switch_device(req: DeviceSwitchRequest, _=Depends(require_api_key)):
+    if req.device not in ("cuda", "cpu"):
+        raise HTTPException(400, "device 'cuda' veya 'cpu' olmalı")
+    if req.device == "cuda" and not torch.cuda.is_available():
+        raise HTTPException(400, "CUDA bu sunucuda mevcut değil")
+    actual = engine.switch_device(req.device)
+    return DeviceSwitchResponse(device=actual, message=f"{actual} aktif, modeller lazy reload bekliyor")
+
+
+# --- Model yönetimi ---
+
+
+@app.post("/models/{direction}/load", response_model=ModelStatusResponse)
+async def load_model(direction: str, _=Depends(require_api_key)):
+    if direction not in settings.models:
+        raise HTTPException(400, f"Geçersiz direction: {direction}")
+    engine._ensure_model(direction)
+    return ModelStatusResponse(direction=direction, loaded=True, message="Model yüklendi")
+
+
+@app.delete("/models/{direction}", response_model=ModelStatusResponse)
+async def unload_model(direction: str, _=Depends(require_api_key)):
+    if direction not in settings.models:
+        raise HTTPException(400, f"Geçersiz direction: {direction}")
+    engine.unload_model(direction)
+    return ModelStatusResponse(direction=direction, loaded=False, message="Model boşaltıldı")
 
 
 # --- Doğrudan çalıştırma ---

@@ -73,6 +73,26 @@ class TranslatorEngine:
     def translate_batch(self, texts: list[str], direction: str) -> list[str]:
         return self._inference(texts, direction)
 
+    def switch_device(self, new_device: str) -> str:
+        """Cihazı değiştir; yüklü modelleri temizle (lazy reload tetiklenir)."""
+        if new_device == self._device:
+            return self._device
+        self._models.clear()
+        self._tokenizers.clear()
+        self._device = new_device
+        log.info("Device değişti: %s", new_device)
+        return self._device
+
+    def unload_model(self, direction: str) -> None:
+        """Modeli bellekten boşalt, VRAM/RAM serbest bırak."""
+        self._models.pop(direction, None)
+        self._tokenizers.pop(direction, None)
+        import gc
+        gc.collect()
+        if self._device == "cuda":
+            torch.cuda.empty_cache()
+        log.info("Model boşaltıldı: %s", direction)
+
     # --- GPU bilgisi ---
 
     def gpu_info(self) -> dict[str, str] | None:

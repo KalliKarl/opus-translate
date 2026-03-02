@@ -17,6 +17,8 @@ class Settings:
     max_length: int = int(os.getenv("TRANSLATE_MAX_LENGTH", "512"))
     batch_size: int = int(os.getenv("TRANSLATE_BATCH_SIZE", "32"))
 
+    api_key: str = os.getenv("TRANSLATE_API_KEY", "")
+
     models: dict[str, str] = field(default_factory=lambda: {
         "tr-en": "Helsinki-NLP/opus-mt-tc-big-tr-en",
         "en-tr": "Helsinki-NLP/opus-mt-tc-big-en-tr",

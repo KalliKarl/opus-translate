@@ -33,6 +33,21 @@ class DetectResponse(BaseModel):
     suggested_direction: str
 
 
+class DeviceSwitchRequest(BaseModel):
+    device: str  # "cuda" | "cpu"
+
+
+class DeviceSwitchResponse(BaseModel):
+    device: str
+    message: str
+
+
+class ModelStatusResponse(BaseModel):
+    direction: str
+    loaded: bool
+    message: str
+
+
 class HealthResponse(BaseModel):
     status: str
     device: str
@@ -42,3 +57,4 @@ class HealthResponse(BaseModel):
     gpu_name: str | None = None
     gpu_memory_used: str | None = None
     gpu_memory_total: str | None = None
+    cuda_available: bool = False

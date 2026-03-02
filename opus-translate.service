@@ -1,0 +1,19 @@
+[Unit]
+Description=Opus Translate
+After=network.target
+
+[Service]
+Type=simple
+User=fk
+WorkingDirectory=/home/fk/opus-translate
+Environment=TRANSLATE_DEVICE=cuda
+Environment=TRANSLATE_PORT=5050
+Environment=TRANSLATE_HOST=0.0.0.0
+# API_KEY: Aşağıyı kaldırın ve değeri ayarlayın
+# Environment=TRANSLATE_API_KEY=your-secret-key-here
+ExecStart=/home/fk/opus-translate/venv/bin/python server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
