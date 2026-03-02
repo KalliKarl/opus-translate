@@ -72,19 +72,31 @@ def run() -> None:
     def on_debug(icon, item):
         proc = _debug_proc[0]
         if proc and proc.poll() is None:
-            # Debug penceresi zaten açık — kapat
             proc.terminate()
             _debug_proc[0] = None
             return
-        # Yeni PowerShell penceresi — log dosyasını tail -f gibi takip et
-        _debug_proc[0] = subprocess.Popen(
-            [
-                "powershell", "-NoExit", "-Command",
-                f"Write-Host 'Opus Translate Log — Ctrl+C ile kapat' -ForegroundColor Cyan; "
-                f"Get-Content '{LOG_FILE}' -Wait -Tail 80",
-            ],
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
+        import platform
+        if platform.system() == "Windows":
+            _debug_proc[0] = subprocess.Popen(
+                [
+                    "powershell", "-NoExit", "-Command",
+                    f"Write-Host 'Opus Translate Log' -ForegroundColor Cyan; "
+                    f"Get-Content '{LOG_FILE}' -Wait -Tail 80",
+                ],
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        else:
+            # Linux: mevcut terminal emülatörüyle aç
+            tail_cmd = f"tail -n 80 -f '{LOG_FILE}'"
+            for term in ("x-terminal-emulator", "gnome-terminal", "xfce4-terminal", "konsole", "xterm"):
+                try:
+                    if term == "gnome-terminal":
+                        _debug_proc[0] = subprocess.Popen([term, "--", "bash", "-c", tail_cmd])
+                    else:
+                        _debug_proc[0] = subprocess.Popen([term, "-e", tail_cmd])
+                    break
+                except FileNotFoundError:
+                    continue
 
     def is_debug_open(item) -> bool:
         p = _debug_proc[0]
