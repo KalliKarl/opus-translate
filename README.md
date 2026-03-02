@@ -67,21 +67,19 @@ nvidia-smi
 # Çıktıda "CUDA Version: X.X" satırına bakın
 ```
 
-**2. Uygun PyTorch CUDA sürümünü kurun:**
+**2. GPU mimarisine göre PyTorch CUDA sürümünü kurun:**
 
-```bash
-# CUDA 12.6 (sürücü CUDA 12.x veya 13.x için)
-pip install torch --index-url https://download.pytorch.org/whl/cu126
-
-# CUDA 12.1
-pip install torch --index-url https://download.pytorch.org/whl/cu121
-
-# CUDA 11.8
-pip install torch --index-url https://download.pytorch.org/whl/cu118
-```
+| GPU Serisi | Mimari | sm | Komut |
+|---|---|---|---|
+| RTX 5000 serisi (Blackwell) | sm_120 | cu128 | `pip install torch --index-url https://download.pytorch.org/whl/cu128` |
+| RTX 4000 serisi (Ada Lovelace) | sm_89/90 | cu121+ | `pip install torch --index-url https://download.pytorch.org/whl/cu121` |
+| RTX 3000 serisi (Ampere) | sm_80/86 | cu116+ | `pip install torch --index-url https://download.pytorch.org/whl/cu121` |
+| RTX 2000 / GTX 1000 serisi | sm_61-75 | cu118 | `pip install torch --index-url https://download.pytorch.org/whl/cu118` |
 
 > **Not:** Sürücü CUDA versiyonu ≥ PyTorch CUDA versiyonu olmalıdır.
-> Örneğin CUDA 13.1 sürücüsü ile cu126 paketi çalışır (geriye dönük uyumlu).
+> Örneğin CUDA 13.1 sürücüsü ile cu128 paketi çalışır (geriye dönük uyumlu).
+>
+> **RTX 5050 / 5060 / 5070 / 5080 / 5090 kullanıcıları:** cu126 **çalışmaz**, mutlaka cu128 gerekir.
 
 **3. GPU'nun görüldüğünü doğrulayın:**
 
