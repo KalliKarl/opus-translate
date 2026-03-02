@@ -33,8 +33,7 @@ except:
 fi
 
 # Arka planda başlat — terminal kapanınca ölmemesi için nohup
-# PYSTRAY_BACKEND=gtk: GNOME 46'da AppIndicator yerine GTK backend (sağ tık menü çalışır)
-nohup env PYSTRAY_BACKEND=gtk python3 tray.py >> "$HOME/.opus-translate-tray.log" 2>&1 &
+nohup python3 tray.py >> "$HOME/.opus-translate-tray.log" 2>&1 &
 TRAY_PID=$!
 echo "[tray] Opus Translate Tray başlatıldı (PID: $TRAY_PID)"
 echo "[tray] Durdurmak için: kill $TRAY_PID"
