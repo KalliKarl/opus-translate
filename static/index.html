@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opus Translate</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>Opus Translate</h1>
+        <div id="status" class="status">Bağlanıyor...</div>
+    </header>
+
+    <main>
+        <div class="translator-panel">
+            <div class="panel source-panel">
+                <div class="panel-header">
+                    <span id="source-lang">Türkçe</span>
+                    <button id="btn-swap" class="btn-swap" title="Yön değiştir">⇄</button>
+                    <span id="target-lang">İngilizce</span>
+                </div>
+                <textarea id="source-text" placeholder="Çevrilecek metni yazın..." rows="8"></textarea>
+                <div class="panel-footer">
+                    <span id="char-count">0 karakter</span>
+                    <button id="btn-translate" class="btn-primary">Çevir</button>
+                </div>
+            </div>
+
+            <div class="panel result-panel">
+                <div class="panel-header">
+                    <span>Çeviri</span>
+                    <button id="btn-copy" class="btn-icon" title="Kopyala">📋</button>
+                </div>
+                <div id="result-text" class="result-area"></div>
+                <div class="panel-footer">
+                    <span id="duration"></span>
+                </div>
+            </div>
+        </div>
+
+        <section class="history-section">
+            <div class="section-header">
+                <h2>Geçmiş</h2>
+                <button id="btn-clear-history" class="btn-small">Temizle</button>
+            </div>
+            <div id="history-list" class="history-list"></div>
+        </section>
+
+        <section class="stats-section">
+            <h2>Sunucu Durumu</h2>
+            <div id="stats" class="stats-grid"></div>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
